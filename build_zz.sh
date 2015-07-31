@@ -14,7 +14,7 @@ nocol='\033[0m'
 KERNEL_NAME="ZZKernel"
 VERSION="X1-Phoenix"
 DATE=$(date +"%d-%m-%Y")
-DEVICE="a5ultex"
+DEVICE="a5ultexx"
 FINAL_ZIP=$KERNEL_NAME-$VERSION-$DATE-$DEVICE.zip
 defconfig=msm8916_sec_defconfig
 VARIANT_DEFCONFIG=msm8916_sec_a5u_eur_defconfig
@@ -29,7 +29,7 @@ ANYKERNEL_DIR=$KERNEL_DIR/AnyKernel2
 KERNEL_IMG=$KERNEL_DIR/out/arch/arm/boot/zImage
 DT_IMAGE=$KERNEL_DIR/out/arch/arm/boot/dt.img
 UPLOAD_DIR=$KERNEL_DIR/OUTPUT/$DEVICE
-DTBTOOL=$KERNEL_DIR/tools/dtbToolCM
+DTBTOOL=$KERNEL_DIR/dtbTool
 TOOLCHAIN=/home/BinayDEV/kernel/arm-eabi-7.2
 
 # Export
@@ -38,7 +38,6 @@ export SUBARCH=arm
 export CROSS_COMPILE=$TOOLCHAIN/bin/arm-eabi-
 export KBUILD_BUILD_USER="ThePhoenix"
 export KBUILD_BUILD_USER="Soft-Bullet"
-make msm8916_sec_defconfig VARIANT_DEFCONFIG=msm8916_sec_a5u_eur_defconfig SELINUX_DEFCONFIG=selinux_defconfig
 
 ## Functions ##
 
@@ -49,7 +48,7 @@ function make_kernel() {
   echo -e "$cyan***********************************************"
   echo -e "          Initializing defconfig          "
   echo -e "***********************************************$nocol"
-  make $defconfig O=out
+  make msm8916_sec_defconfig VARIANT_DEFCONFIG=msm8916_sec_a5u_eur_defconfig SELINUX_DEFCONFIG=selinux_defconfig O=out
   echo -e "$cyan***********************************************"
   echo -e "             Building kernel          "
   echo -e "***********************************************$nocol"
@@ -62,15 +61,12 @@ function make_kernel() {
 
 # Make DT.IMG
 function make_dt(){
-chmod 777 $DTBTOOL
-$DTBTOOL -2 -o $DT_IMAGE -s 2048 -p $KERNEL_DIR/scripts/dtc/ $KERNEL_DIR/arch/arm/boot/dts/
+$DTBTOOL -2 -o ./out/arch/arm/boot/dt.img -s 2048 -p ./out/scripts/dtc/ ./out/arch/arm/boot/dts/ -v
 }
 
 # Making zip
 function make_zip() {
 mkdir -p tmp_mod
-make -j16 modules_install INSTALL_MOD_PATH=tmp_mod INSTALL_MOD_STRIP=1
-find tmp_mod/ -name '*.ko' -type f -exec cp '{}' $ANYKERNEL_DIR/modules/system/lib/modules/ \;
 cp $KERNEL_IMG $ANYKERNEL_DIR
 cp $DT_IMAGE $ANYKERNEL_DIR
 mkdir -p $UPLOAD_DIR
@@ -87,33 +83,20 @@ echo -e "$cyan***********************************************"
   echo "               Compiling ZZKernel                "
   echo -e "***********************************************$nocol"
   echo -e " "
-  echo -e " Select one of the following types of build : "
-  echo -e " 1.Dirty"
-  echo -e " 2.Clean"
-  echo -n " Your choice : ? "
-  read ch
-
   echo -e " Select if you want zip or just kernel : "
   echo -e " 1.Get flashable zip"
   echo -e " 2.Get kernel only"
   echo -n " Your choice : ? "
   read ziporkernel
 
-case $ch in
-  1) echo -e "$cyan***********************************************"
-     echo -e "          	Dirty          "
-     echo -e "***********************************************$nocol"
-     make_kernel
-     make_dt ;;
-  2) echo -e "$cyan***********************************************"
+echo -e "$cyan***********************************************"
      echo -e "          	Clean          "
      echo -e "***********************************************$nocol"
      make clean
      make mrproper
      rm -rf tmp_mod
      make_kernel
-     make_dt ;;
-esac
+     make_dt
 
 if [ "$ziporkernel" = "1" ]; then
      echo -e "$cyan***********************************************"
@@ -131,7 +114,6 @@ fi
 function cleanup(){
 rm -rf $KERNEL_IMG
 rm -rf $DT_IMAGE
-rm -rf $ANYKERNEL_DIR/modules/system/lib/modules/*.ko
 }
 
 options
