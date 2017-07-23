@@ -30,7 +30,7 @@ KERNEL_IMG=$KERNEL_DIR/out/arch/arm/boot/zImage
 DT_IMAGE=$KERNEL_DIR/out/arch/arm/boot/dt.img
 UPLOAD_DIR=$KERNEL_DIR/OUTPUT/$DEVICE
 DTBTOOL=$KERNEL_DIR/tools/dtbToolCM
-TOOLCHAIN=$KERNEL_DIR/../tc
+TOOLCHAIN=$KERNEL_DIR/../arm-eabi-7.2
 
 # Export
 export ARCH=arm
@@ -38,6 +38,7 @@ export SUBARCH=arm
 export CROSS_COMPILE=$TOOLCHAIN/bin/arm-eabi-
 export KBUILD_BUILD_USER="ThePhoenix"
 export KBUILD_BUILD_USER="Soft-Bullet"
+make msm8916_sec_defconfig VARIANT_DEFCONFIG=msm8916_sec_a5u_eur_defconfig SELINUX_DEFCONFIG=selinux_defconfig
 
 ## Functions ##
 
@@ -84,7 +85,7 @@ cd $UPLOAD_DIR
 # Options
 function options() {
 echo -e "$cyan***********************************************"
-  echo "               Compiling RebornKernel                "
+  echo "               Compiling ZZKernel                "
   echo -e "***********************************************$nocol"
   echo -e " "
   echo -e " Select one of the following types of build : "
