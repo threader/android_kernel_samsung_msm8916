@@ -4,7 +4,7 @@
 ## AnyKernel setup
 # begin properties
 properties() {
-kernel.string=XeonKernel by @iamsj7
+kernel.string=ZZKernel by @Soft-Bullet
 do.devicecheck=0
 do.modules=1
 do.cleanup=1
