@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -68,10 +68,6 @@ struct mdss_mdp_video_ctx {
 	struct completion pp_comp;
 	int wait_pending;
 
-	u32 default_fps;
-	u32 saved_vtotal;
-	u32 saved_vfporch;
-
 	atomic_t vsync_ref;
 	spinlock_t vsync_lock;
 	spinlock_t dfps_lock;
@@ -120,7 +116,7 @@ int mdss_mdp_video_addr_setup(struct mdss_data_type *mdata,
 
 	for (i = 0; i < count; i++) {
 		head[i].base = mdata->mdss_io.base + offsets[i];
-		pr_debug("adding Video Intf #%d offset=0x%x virt=%pK\n", i,
+		pr_debug("adding Video Intf #%d offset=0x%x virt=%p\n", i,
 				offsets[i], head[i].base);
 		head[i].ref_cnt = 0;
 		head[i].intf_num = i + MDSS_MDP_INTF0;
@@ -217,7 +213,7 @@ static void mdss_mdp_video_intf_recovery(void *data, int event)
 			mutex_unlock(&ctl->offlock);
 			return;
 		} else {
-			pr_warn_once("line count is less. line_cnt = %d\n",
+			pr_warn("line count is less. line_cnt = %d\n",
 								line_cnt);
 			/* Add delay so that line count is in active region */
 			udelay(delay);
@@ -446,7 +442,7 @@ static int mdss_mdp_video_intfs_stop(struct mdss_mdp_ctl *ctl,
 			pr_err("Intf %d not in use\n", (inum + MDSS_MDP_INTF0));
 			return -ENODEV;
 		}
-		pr_debug("stop ctl=%d video Intf #%d base=%pK", ctl->num,
+		pr_debug("stop ctl=%d video Intf #%d base=%p", ctl->num,
 			ctx->intf_num, ctx->base);
 	} else {
 		pr_err("Invalid intf number: %d\n", (inum + MDSS_MDP_INTF0));
@@ -495,9 +491,8 @@ static int mdss_mdp_video_intfs_stop(struct mdss_mdp_ctl *ctl,
 		(inum + MDSS_MDP_INTF0), NULL, NULL);
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_INTF_UNDER_RUN,
 		(inum + MDSS_MDP_INTF0), NULL, NULL);
-	if(ctl->intf_type == MDSS_INTF_DSI)
-		mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP,
-			ctl->mixer_left->num, NULL, NULL);
+	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP,
+		0, NULL, NULL);
 
 	ctx->ref_cnt--;
 end:
@@ -658,7 +653,7 @@ static void mdss_mdp_video_underrun_intr_done(void *arg)
 	MDSS_XLOG(ctl->num, ctl->underrun_cnt);
 	MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1", "edp", "hdmi", "panic");
 	trace_mdp_video_underrun_done(ctl->num, ctl->underrun_cnt);
-	pr_debug("display underrun detected for ctl=%d count=%d\n", ctl->num,
+	pr_info("display underrun detected for ctl=%d count=%d\n", ctl->num,
 			ctl->underrun_cnt);
 
 	if (ctl->opmode & MDSS_MDP_CTL_OP_PACK_3D_ENABLE)
@@ -668,24 +663,24 @@ static void mdss_mdp_video_underrun_intr_done(void *arg)
 static int mdss_mdp_video_vfp_fps_update(struct mdss_mdp_video_ctx *ctx,
 				 struct mdss_panel_data *pdata, int new_fps)
 {
+	int curr_fps;
 	u32 add_v_lines = 0;
 	u32 current_vsync_period_f0, new_vsync_period_f0;
 	u32 vsync_period, hsync_period;
-	int diff;
 
 	vsync_period = mdss_panel_get_vtotal(&pdata->panel_info);
 	hsync_period = mdss_panel_get_htotal(&pdata->panel_info, true);
+	curr_fps = mdss_panel_get_framerate(&pdata->panel_info);
 
-	if (!ctx->default_fps) {
-		ctx->default_fps = mdss_panel_get_framerate(&pdata->panel_info);
-		ctx->saved_vtotal = vsync_period;
-		ctx->saved_vfporch = pdata->panel_info.lcdc.v_front_porch;
+	if (curr_fps > new_fps) {
+		add_v_lines = mult_frac(vsync_period,
+				(curr_fps - new_fps), new_fps);
+		pdata->panel_info.lcdc.v_front_porch += add_v_lines;
+	} else {
+		add_v_lines = mult_frac(vsync_period,
+				(new_fps - curr_fps), new_fps);
+		pdata->panel_info.lcdc.v_front_porch -= add_v_lines;
 	}
-
-	diff = ctx->default_fps - new_fps;
-	add_v_lines = mult_frac(ctx->saved_vtotal, diff, new_fps);
-	pdata->panel_info.lcdc.v_front_porch = ctx->saved_vfporch +
-			add_v_lines;
 
 	vsync_period = mdss_panel_get_vtotal(&pdata->panel_info);
 	current_vsync_period_f0 = mdp_video_read(ctx,
@@ -996,7 +991,6 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 		ctx->timegen_en = true;
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
-		mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_POST_PANEL_ON, NULL);
 	}
 
 	return 0;
@@ -1159,21 +1153,19 @@ static void mdss_mdp_fetch_start_config(struct mdss_mdp_video_ctx *ctx,
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_PROG_FETCH_START, fetch_start);
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_CONFIG, fetch_enable);
 }
-
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
 static void mdss_mdp_video_pingpong_done(void *arg)
 {
 	struct mdss_mdp_ctl *ctl = arg;
 	struct mdss_mdp_video_ctx *ctx;
 	ctx = (struct mdss_mdp_video_ctx *) ctl->priv_data;
-	pr_info("%s:mdss_mdp_isr ctl->mixer_left->num = %d\n", __func__, ctl->mixer_left->num);
+	pr_info("%s:mdss_mdp_isr 2222\n", __func__);
 
 	if (!ctx) {
 		pr_err("invalid ctx\n");
 		return;
 	}
-	if(ctl->intf_type == MDSS_INTF_DSI)
-		mdss_mdp_irq_disable_nosync(MDSS_MDP_IRQ_PING_PONG_COMP, ctl->mixer_left->num);
+
+	mdss_mdp_irq_disable_nosync(MDSS_MDP_IRQ_PING_PONG_COMP, ctl->num);
 	complete_all(&ctx->pp_comp);
 
 }
@@ -1182,7 +1174,7 @@ static int mdss_mdp_video_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	struct mdss_mdp_video_ctx *ctx;
 	int rc = 0;
 	ctx = (struct mdss_mdp_video_ctx *) ctl->priv_data;
-	pr_info("%s: mdss_mdp_isr ctl->mixer_left->num = %d\n", __func__, ctl->mixer_left->num);
+	pr_info("%s:mdss_mdp_isr 1111\n", __func__);
 
 	if (!ctx) {
 		pr_err("invalid ctx\n");
@@ -1195,7 +1187,6 @@ static int mdss_mdp_video_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 
 	return rc;
 }
-#endif
 
 static void mdss_mdp_handoff_programmable_fetch(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_video_ctx *ctx)
@@ -1244,7 +1235,7 @@ static int mdss_mdp_video_intfs_setup(struct mdss_mdp_ctl *ctl,
 				(inum + MDSS_MDP_INTF0));
 			return -EBUSY;
 		}
-		pr_debug("video Intf #%d base=%pK", ctx->intf_num, ctx->base);
+		pr_debug("video Intf #%d base=%p", ctx->intf_num, ctx->base);
 		ctx->ref_cnt++;
 	} else {
 		pr_err("Invalid intf number: %d\n", (inum + MDSS_MDP_INTF0));
@@ -1281,13 +1272,8 @@ static int mdss_mdp_video_intfs_setup(struct mdss_mdp_ctl *ctl,
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_INTF_UNDER_RUN,
 				(inum + MDSS_MDP_INTF0),
 				mdss_mdp_video_underrun_intr_done, ctl);
-
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
-	if(ctl->intf_type == MDSS_INTF_DSI)
-		mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP,
-					ctl->mixer_left->num,  mdss_mdp_video_pingpong_done, ctl);
-#endif
-
+	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP,
+				0,  mdss_mdp_video_pingpong_done, ctl);
 	dst_bpp = pinfo->fbc.enabled ? (pinfo->fbc.target_bpp) : (pinfo->bpp);
 
 	itp.width = mult_frac((pinfo->xres + pinfo->lcdc.border_left +
@@ -1346,13 +1332,7 @@ int mdss_mdp_video_start(struct mdss_mdp_ctl *ctl)
 	ctl->add_vsync_handler = mdss_mdp_video_add_vsync_handler;
 	ctl->remove_vsync_handler = mdss_mdp_video_remove_vsync_handler;
 	ctl->config_fps_fnc = mdss_mdp_video_config_fps;
-
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
-	if(ctl->intf_type == MDSS_INTF_DSI)
-		ctl->wait_video_pingpong = mdss_mdp_video_wait4pingpong;
-	else
-		ctl->wait_video_pingpong = NULL;
-#endif
+	ctl->wait_video_pingpong = mdss_mdp_video_wait4pingpong;
 
 	return 0;
 }

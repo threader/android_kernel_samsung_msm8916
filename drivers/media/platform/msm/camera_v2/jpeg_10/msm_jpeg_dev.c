@@ -132,7 +132,6 @@ static long msm_jpeg_subdev_ioctl(struct v4l2_subdev *sd,
 	JPEG_DBG("%s: cmd=%d\n", __func__, cmd);
 
 	JPEG_DBG("%s: pgmn_dev 0x%pK", __func__, pgmn_dev);
-
 	JPEG_DBG("%s: Calling __msm_jpeg_ioctl\n", __func__);
 
 	rc = __msm_jpeg_ioctl(pgmn_dev, cmd, (unsigned long)arg);

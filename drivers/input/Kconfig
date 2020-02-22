@@ -177,8 +177,9 @@ config INPUT_APMPOWER
 config INPUT_KEYRESET
 	bool "Reset key"
 	depends on INPUT
+	select INPUT_KEYCOMBO
 	---help---
-	  Say Y here if you want to reboot when some keys are pressed;.
+	  Say Y here if you want to reboot when some keys are pressed;
 
 config INPUT_KEYCOMBO
 	tristate "Key combo"
@@ -188,13 +189,6 @@ config INPUT_KEYCOMBO
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called keycombo.
-
-config SENSORS_HALL
-	bool "Hall sensor"
-	depends on INPUT
-	---help---
-	 Say y here if you want to use this hall sensor driver, it
-	 is like a switch. For example, lid.
 
 config COMMON_INPUT_BOOSTER
 	tristate "input booster"
@@ -208,14 +202,6 @@ config INPUT_BOOSTER
 	default n
 	help
 	  Say Y here if you want to boost when some keys and touches are pressed. If unsure, say N.
-
-config TOUCH_DISABLER
-	bool "touch disabler"
-	depends on INPUT
-	default n
-	help
-	  Say Y here if you want to enable/disable touch devices on change
-	  primary panel status on Samsung touch panels. If unsure, say N.
 
 
 comment "Input Device Drivers"

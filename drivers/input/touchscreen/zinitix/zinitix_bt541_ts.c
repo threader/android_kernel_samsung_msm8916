@@ -49,8 +49,15 @@
 
 #include "zinitix_bt541_ts.h"
 
-#if defined(CONFIG_TOUCH_DISABLER)
-#include <linux/input/touch_disabler.h>
+#ifdef CONFIG_CPU_FREQ_LIMIT_USERSPACE
+#include <linux/cpufreq.h>
+
+#define TOUCH_BOOSTER_DVFS
+
+#define DVFS_STAGE_TRIPLE       3
+#define DVFS_STAGE_DUAL         2
+#define DVFS_STAGE_SINGLE       1
+#define DVFS_STAGE_NONE         0
 #endif
 
 #if (TSP_TYPE_COUNT == 1)
@@ -3048,15 +3055,15 @@ static void fw_update(void *device_data)
 	snprintf(result, sizeof(result) , "%s", "OK");
 	set_cmd_result(info, result,
 			strnlen(result, sizeof(result)));
-	return;
 
+if (fp != NULL) {
 err_fw_size:
 	kfree(buff);
 err_alloc:
 	filp_close(fp, NULL);
 err_open:
 	set_fs(old_fs);
-
+}
 not_support:
 	snprintf(result, sizeof(result) , "%s", "NG");
 	set_cmd_result(info, result, strnlen(result, sizeof(result)));
@@ -4955,9 +4962,6 @@ static int bt541_ts_probe(struct i2c_client *client,
 	}
 #endif
 
-#if defined(CONFIG_TOUCH_DISABLER)
-	touch_disabler_set_ts_dev(info->input_dev);
-#endif
 	return 0;
 
 #ifdef SEC_FACTORY_TEST
@@ -4994,9 +4998,7 @@ static int bt541_ts_remove(struct i2c_client *client)
 {
 	struct bt541_ts_info *info = i2c_get_clientdata(client);
 	struct bt541_ts_platform_data *pdata = info->pdata;
-#if defined(CONFIG_TOUCH_DISABLER)
-	touch_disabler_set_ts_dev(NULL);
-#endif
+
 	disable_irq(info->irq);
 	down(&info->work_lock);
 

@@ -7,4 +7,9 @@ obj-$(CONFIG_SS_VIBRATOR) += ss_vibrator.o
 # Makefile for Vibrator controlled by SUB PMIC Regulator.
 obj-$(CONFIG_SM5703_VIBRATOR) += sm5703_vibrator.o
 
+# Makefile for the vibrator driver ICs with vibrator driver
+
+obj-$(CONFIG_VIBETONZ) += vibrator.o
+
+vibrator-objs +=tspdrv.o
 

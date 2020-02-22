@@ -66,13 +66,6 @@ void mdp3_check_dsi_ctrl_status(struct work_struct *work,
 		return;
 	}
 
-	if (mdp3_session->in_splash_screen) {
-		schedule_delayed_work(&pdsi_status->check_status,
-			msecs_to_jiffies(interval));
-		pr_debug("%s: cont splash is on\n", __func__);
-		return;
-	}
-
 	mutex_lock(&mdp3_session->lock);
 	if (!mdp3_session->status) {
 		pr_debug("%s: display off already\n", __func__);

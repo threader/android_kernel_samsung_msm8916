@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -109,6 +109,7 @@ enum mdss_hw_index {
 	MDSS_HW_DSI1,
 	MDSS_HW_HDMI,
 	MDSS_HW_EDP,
+	MDSS_HW_IOMMU,
 	MDSS_MAX_HW_BLK
 };
 
@@ -116,7 +117,6 @@ enum mdss_bus_clients {
 	MDSS_MDP_RT,
 	MDSS_DSI_RT,
 	MDSS_MDP_NRT,
-	MDSS_IOMMU_RT,
 	MDSS_MAX_BUS_CLIENTS
 };
 
@@ -129,7 +129,6 @@ struct mdss_data_type {
 	struct regulator *batfet;
 	u32 max_mdp_clk_rate;
 	struct mdss_util_intf *mdss_util;
-	struct mdss_panel_data *pdata;
 #if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
 	char __iomem *mdss_base;
 	size_t mdp_reg_size;
@@ -197,7 +196,6 @@ struct mdss_data_type {
 	struct mdss_fudge_factor ib_factor;
 	struct mdss_fudge_factor ib_factor_overlap;
 	struct mdss_fudge_factor ib_factor_cmd;
-        struct mdss_fudge_factor ib_factor_single;
 	struct mdss_fudge_factor clk_factor;
 
 	u32 disable_prefill;
@@ -272,10 +270,6 @@ struct mdss_data_type {
 	struct mdss_max_bw_settings *max_bw_settings;
 	u32 bw_mode_bitmap;
 	u32 max_bw_settings_cnt;
-
-	struct mdss_max_bw_settings *max_per_pipe_bw_settings;
-	u32 mdss_per_pipe_bw_cnt;
-	u32 min_bw_per_pipe;
 };
 extern struct mdss_data_type *mdss_res;
 
@@ -311,7 +305,6 @@ struct mdss_util_intf {
 	void (*bus_bandwidth_ctrl)(int enable);
 	int (*bus_scale_set_quota)(int client, u64 ab_quota, u64 ib_quota);
 	struct mdss_panel_cfg* (*panel_intf_type)(int intf_val);
-	int (*dyn_clk_gating_ctrl)(int enable);
 };
 
 struct mdss_util_intf *mdss_get_util_intf(void);

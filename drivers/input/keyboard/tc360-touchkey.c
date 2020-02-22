@@ -38,14 +38,9 @@
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
 
-#if defined(CONFIG_TOUCH_DISABLER)
-#include <linux/input/touch_disabler.h>
-#endif
 
 #ifdef CONFIG_SEC_E7_PROJECT
 #define TC300K_FW_NAME "tc360_e7"
-#elif defined CONFIG_SEC_SERRANOVE_PROJECT
-#define TC300K_FW_NAME  "tc360_serrano_eur"
 #else
 #define TC300K_FW_NAME "tc360_e5"
 #endif
@@ -67,8 +62,6 @@
 #define CORERIVER_RECENT_BACK_REPORT_FW_VER	0x07
 #elif defined(CONFIG_SEC_E5_PROJECT)
 #define CORERIVER_RECENT_BACK_REPORT_FW_VER	0x07
-#elif defined(CONFIG_SEC_SERRANOVE_PROJECT)
-#define CORERIVER_RECENT_BACK_REPORT_FW_VER	0x05
 #else
 #define CORERIVER_RECENT_BACK_REPORT_FW_VER	0x00
 #endif
@@ -1042,7 +1035,6 @@ static int load_fw_built_in(struct tc300k_data *data)
 
 	pr_info("%s!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",fw_name);
 	ret = request_firmware(&data->fw, fw_name, &client->dev);
-
 	if (ret) {
 		dev_err(&client->dev, "error requesting built-in firmware (%d)"
 			"\n", ret);
@@ -2393,12 +2385,6 @@ static int tc300k_probe(struct i2c_client *client,
 			ret);
 		goto err_register_led;
 	}
-
-#ifdef USE_OPEN_CLOSE
-#if defined(CONFIG_TOUCH_DISABLER)
-	touch_disabler_set_tk_dev(input_dev);
-#endif
-#endif
 
 	dev_info(&client->dev, "successfully probed.\n");
 

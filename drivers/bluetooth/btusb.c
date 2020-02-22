@@ -1355,7 +1355,7 @@ static int btusb_probe(struct usb_interface *intf,
 	struct usb_endpoint_descriptor *ep_desc;
 	struct btusb_data *data;
 	struct hci_dev *hdev;
-	int i, version, err;
+	int i, err;
 
 	BT_DBG("intf %p id %p", intf, id);
 
@@ -1382,20 +1382,6 @@ static int btusb_probe(struct usb_interface *intf,
 	if (ignore_sniffer && id->driver_info & BTUSB_SNIFFER)
 		return -ENODEV;
 
-	if (id->driver_info & BTUSB_ATH3012) {
-		struct usb_device *udev = interface_to_usbdev(intf);
-
-		version = get_rome_version(udev);
-		BT_INFO("Rome Version: 0x%x",  version);
-		/* Old firmware would otherwise let ath3k driver load
-		 * patch and sysconfig files */
-		if (version)
-			rome_download(udev);
-		else if (le16_to_cpu(udev->descriptor.bcdDevice) <= 0x0001) {
-			BT_INFO("FW for ar3k is yet to be downloaded");
-			return -ENODEV;
-		}
-	}
 	data = devm_kzalloc(&intf->dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -1679,9 +1665,6 @@ MODULE_PARM_DESC(disable_scofix, "Disable fixup of wrong SCO buffer size");
 
 module_param(force_scofix, bool, 0644);
 MODULE_PARM_DESC(force_scofix, "Force fixup of wrong SCO buffers size");
-
-module_param(reset, bool, 0644);
-MODULE_PARM_DESC(reset, "Send HCI reset command on initialization");
 
 MODULE_AUTHOR("Marcel Holtmann <marcel@holtmann.org>");
 MODULE_DESCRIPTION("Generic Bluetooth USB driver ver " VERSION);

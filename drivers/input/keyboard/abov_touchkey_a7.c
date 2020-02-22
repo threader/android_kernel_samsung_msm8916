@@ -40,10 +40,6 @@
 #include <linux/of_gpio.h>
 #endif
 
-#if defined(CONFIG_TOUCH_DISABLER)
-#include <linux/input/touch_disabler.h>
-#endif
-
 /* registers */
 #define ABOV_BTNSTATUS		0x00
 #define ABOV_FW_VER			0x01
@@ -75,9 +71,9 @@
 
 static struct device *sec_touchkey;
 
-#define FW_VERSION 0x0B
-#define FW_CHECKSUM_H 0xB1
-#define FW_CHECKSUM_L 0x14
+#define FW_VERSION 0x0a
+#define FW_CHECKSUM_H 0x6D
+#define FW_CHECKSUM_L 0x8E
 
 #define ABOV_DUAL_DETECTION_CMD_FW_VER	0x0a
 #define CRC_CHECK_WITHBOOTING
@@ -1559,9 +1555,7 @@ static int abov_tk_probe(struct i2c_client *client,
 		schedule_delayed_work(&info->led_twinkle_work, msecs_to_jiffies(400));
 	}
 #endif
-#if defined(CONFIG_TOUCH_DISABLER)
-	touch_disabler_set_tk_dev(input_dev);
-#endif
+
 	return 0;
 
 err_req_irq:

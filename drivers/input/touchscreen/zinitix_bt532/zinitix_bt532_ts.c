@@ -66,9 +66,6 @@
 #endif
 #endif
 
-#if defined(CONFIG_TOUCH_DISABLER)
-#include <linux/input/touch_disabler.h>
-#endif
 
 #define NOT_SUPPORTED_TOUCH_DUMMY_KEY
 #define SUPPORTED_PALM_TOUCH
@@ -377,8 +374,6 @@ static void get_max_vdiff(void *device_data);
 static void run_scantime_read(void *device_data);
 static void get_scantime(void *device_data);
 */
-static void lpm_disable(void *device_data);
-static void lpm_enable(void *device_data);
 static void run_delta_read(void *device_data);
 static void get_delta(void *device_data);
 static void clear_cover_mode(void *device_data);
@@ -425,8 +420,6 @@ static struct tsp_cmd tsp_cmds[] = {
 	{TSP_CMD("run_scantime_read", run_scantime_read),},
 	{TSP_CMD("get_scantime", get_scantime),},
 */
-	{TSP_CMD("lpm_disable", lpm_disable),},
-	{TSP_CMD("lpm_enable", lpm_enable),},
 	{TSP_CMD("run_delta_read", run_delta_read),},
 	{TSP_CMD("get_delta", get_delta),},
 	{TSP_CMD("get_config_ver", get_config_ver),},
@@ -2036,8 +2029,8 @@ retry_init:
 
 	cap->MinX = (u32)0;
 	cap->MinY = (u32)0;
-#if defined(CONFIG_MACH_GT58_EUR_OPEN) || defined(CONFIG_MACH_GT58WIFI_EUR_OPEN) \
-	|| defined(CONFIG_MACH_GT5NOTE8_EUR_OPEN) || defined(CONFIG_MACH_GT5NOTE8WIFI_EUR_OPEN)
+#if defined(CONFIG_MACH_GT5NOTE8_EUR_OPEN) || defined(CONFIG_MACH_GT5NOTE8WIFI_EUR_OPEN) \
+	|| defined(CONFIG_MACH_GT58_EUR_OPEN) || defined(CONFIG_MACH_GT58WIFI_EUR_OPEN)
 	cap->MaxX = 3072;
 	cap->MaxY = 4096;
 #else
@@ -2085,8 +2078,8 @@ retry_init:
 	write_reg(client, 0x11e, reg_val);
 #endif
 
-#if defined(CONFIG_MACH_GT58_EUR_OPEN) || defined(CONFIG_MACH_GT58WIFI_EUR_OPEN) \
-	|| defined(CONFIG_MACH_GT5NOTE8_EUR_OPEN) || defined(CONFIG_MACH_GT5NOTE8WIFI_EUR_OPEN)
+#if defined(CONFIG_MACH_GT5NOTE8_EUR_OPEN) || defined(CONFIG_MACH_GT5NOTE8WIFI_EUR_OPEN) \
+	|| defined(CONFIG_MACH_GT58_EUR_OPEN) || defined(CONFIG_MACH_GT58WIFI_EUR_OPEN)
 	write_reg(client, 0x1ff, 4);
 	write_reg(client, 0x0c3, 0);
 #endif
@@ -2242,8 +2235,8 @@ static bool mini_init_touch(struct bt532_ts_info *info)
 	write_reg(client, 0x11e, reg_val);
 #endif
 
-#if defined(CONFIG_MACH_GT58_EUR_OPEN) || defined(CONFIG_MACH_GT58WIFI_EUR_OPEN) \
-	|| defined(CONFIG_MACH_GT5NOTE8_EUR_OPEN) || defined(CONFIG_MACH_GT5NOTE8WIFI_EUR_OPEN)	
+#if defined(CONFIG_MACH_GT5NOTE8_EUR_OPEN) || defined(CONFIG_MACH_GT5NOTE8WIFI_EUR_OPEN) \
+	|| defined(CONFIG_MACH_GT58_EUR_OPEN) || defined(CONFIG_MACH_GT58WIFI_EUR_OPEN)
 	write_reg(client, 0x1ff, 4);
 	write_reg(client, 0x0c3, 0);
 #endif
@@ -3447,10 +3440,6 @@ static void run_reference_read(void *device_data)
 	u16 min, max;
 	s32 i,j;
 
-#if ESD_TIMER_INTERVAL
-	esd_timer_stop(info);
-#endif
-
 	set_default_result(info);
 
 	ts_set_touchmode(TOUCH_PDND_MODE);
@@ -3485,13 +3474,6 @@ static void run_reference_read(void *device_data)
 
 	dev_info(&client->dev, "%s: \"%s\"(%d)\n", __func__, finfo->cmd_buff,
 				strlen(finfo->cmd_buff));
-
-#if ESD_TIMER_INTERVAL
-	esd_timer_start(CHECK_ESD_TIMER, info);
-#if defined(TSP_VERBOSE_DEBUG)
-	dev_info(&client->dev, "Started esd timer\n");
-#endif
-#endif	
 
 	return;
 }
@@ -4453,9 +4435,6 @@ static void run_preference_read(void *device_data)
 	u16 min, max;
 	s32 i, j;
 
-#if ESD_TIMER_INTERVAL
-	esd_timer_stop(info);
-#endif
 	set_default_result(info);
 
 	ts_set_touchmode(TOUCH_PDND_MODE);
@@ -4493,13 +4472,6 @@ static void run_preference_read(void *device_data)
 
 	dev_info(&client->dev, "%s: \"%s\"(%d)\n", __func__, finfo->cmd_buff,
 		strlen(finfo->cmd_buff));
-
-#if ESD_TIMER_INTERVAL
-	esd_timer_start(CHECK_ESD_TIMER, info);
-#if defined(TSP_VERBOSE_DEBUG)
-	dev_info(&client->dev, "Started esd timer\n");
-#endif
-#endif	
 
 	return;
 }
@@ -4539,39 +4511,6 @@ static void get_preference(void *device_data)
 
 	dev_info(&client->dev, "%s: %s(%d)\n", __func__, finfo->cmd_buff,
 		strnlen(finfo->cmd_buff, sizeof(finfo->cmd_buff)));
-
-	return;
-}
-
-static void lpm_disable(void *device_data)
-{
-	struct bt532_ts_info *info = (struct bt532_ts_info *)device_data;
-	struct i2c_client *client = info->client;
-	struct tsp_factory_info *finfo = info->factory_info;
-
-	set_default_result(info);
-
-	write_reg(client, 0x07e, 0);
-
-	finfo->cmd_state = OK;
-
-	dev_info(&client->dev, "ts_lpm_disable");
-
-	return;
-}
-static void lpm_enable(void *device_data)
-{
-	struct bt532_ts_info *info = (struct bt532_ts_info *)device_data;
-	struct i2c_client *client = info->client;
-	struct tsp_factory_info *finfo = info->factory_info;
-
-	set_default_result(info);
-
-	write_reg(client, 0x07e, 3);
-
-	finfo->cmd_state = OK;
-
-	dev_info(&client->dev, "ts_lpm_disable");
 
 	return;
 }
@@ -6099,10 +6038,6 @@ static int bt532_ts_probe(struct i2c_client *client,
 	bt532_set_tsp_info(info);
 #endif
 
-
-#if defined(CONFIG_TOUCH_DISABLER)
-	touch_disabler_set_ts_dev(info->input_dev);
-#endif
 	return 0;
 
 #ifdef SEC_FACTORY_TEST
@@ -6144,10 +6079,6 @@ static int bt532_ts_remove(struct i2c_client *client)
 {
 	struct bt532_ts_info *info = i2c_get_clientdata(client);
 	struct bt532_ts_platform_data *pdata = info->pdata;
-
-#if defined(CONFIG_TOUCH_DISABLER)
-	touch_disabler_set_ts_dev(NULL);
-#endif
 
 	disable_irq(info->irq);
 	down(&info->work_lock);

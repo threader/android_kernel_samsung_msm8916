@@ -24,10 +24,6 @@
 #include "cyttsp5_regs.h"
 #include <linux/input/mt.h>
 
-#if defined(CONFIG_TOUCH_DISABLER)
-#include <linux/input/touch_disabler.h>
-#endif
-
 #define CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_MT_B
 #define CYTTSP5_TOUCHLOG_ENABLE 0
 
@@ -522,6 +518,13 @@ static void inline scale_maj_min(struct cyttsp5_mt_data *md,
 	*value *= 17;
 	*value /= 10;
 
+	if (sig == ABS_MT_TOUCH_MAJOR)
+		*value -= ((*value) / 10);
+	else {
+		*value *= 11;
+		*value /= 10;
+	}
+
 	if (*value > 255)
 		*value = 255;
 }
@@ -942,6 +945,8 @@ static void cyttsp5_mt_close(struct input_dev *input)
 
 	/* pm_runtime_put(dev); */
 	cyttsp5_core_suspend(dev);
+
+	cyttsp5_mt_lift_all(md);
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -1166,9 +1171,6 @@ int cyttsp5_mt_probe(struct device *dev)
 #endif
 
 	dev_dbg(dev, "%s:done\n", __func__);
-#if defined(CONFIG_TOUCH_DISABLER)
-	touch_disabler_set_ts_dev(md->input);
-#endif
 	return 0;
 
 error_init_input:
@@ -1194,10 +1196,6 @@ int cyttsp5_mt_release(struct device *dev)
 		pm_runtime_get_noresume(dev);*/
 
 	unregister_early_suspend(&md->es);
-#endif
-
-#if defined(CONFIG_TOUCH_DISABLER)
-	touch_disabler_set_ts_dev(NULL);
 #endif
 
 	if (md->input_device_registered) {

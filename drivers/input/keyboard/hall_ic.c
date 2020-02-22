@@ -42,7 +42,7 @@ struct hall_drvdata {
 
 static bool flip_cover = 1;
 #if defined(CONFIG_SENSORS_HALL_REAR)
-static bool flip_cover_rear = 0;
+static bool flip_cover_rear = 1;
 #endif
 static ssize_t hall_detect_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -57,18 +57,18 @@ static ssize_t hall_detect_show(struct device *dev,
 }
 static DEVICE_ATTR(hall_detect, 0444, hall_detect_show, NULL);
 #if defined(CONFIG_SENSORS_HALL_REAR)
-static ssize_t certify_hall_detect_show(struct device *dev,
+static ssize_t hall_detect_rear_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	if (flip_cover_rear) {
-		sprintf(buf, "CLOSE");
-	} else {
 		sprintf(buf, "OPEN");
+	} else {
+		sprintf(buf, "CLOSE");
 	}
 
 	return strlen(buf);
 }
-static DEVICE_ATTR(certify_hall_detect, 0444, certify_hall_detect_show, NULL);
+static DEVICE_ATTR(hall_detect_rear, 0444, hall_detect_rear_show, NULL);
 #endif
 #ifdef CONFIG_SEC_FACTORY
 static void flip_cover_work(struct work_struct *work)
@@ -91,7 +91,6 @@ static void flip_cover_work(struct work_struct *work)
 	if(first == second) {
 		flip_cover = first;
 		input_report_switch(ddata->input, SW_FLIP, flip_cover);
-		input_report_switch(ddata->input, SW_LID, !flip_cover);
 		input_sync(ddata->input);
 	}
 }
@@ -103,13 +102,13 @@ static void flip_cover_rear_work(struct work_struct *work)
 		container_of(work, struct hall_drvdata,
 				flip_cover_rear_dwork.work);
 
-	first = !gpio_get_value(ddata->gpio_flip_cover_rear);
+	first = gpio_get_value(ddata->gpio_flip_cover_rear);
 
 	printk("keys:%s #1 : %d\n", __func__, first);
 
 	msleep(50);
 
-	second = !gpio_get_value(ddata->gpio_flip_cover_rear);
+	second = gpio_get_value(ddata->gpio_flip_cover_rear);
 
 	printk("keys:%s #2 : %d\n", __func__, second);
 
@@ -135,8 +134,6 @@ static void flip_cover_work(struct work_struct *work)
 	flip_cover = first;
 	input_report_switch(ddata->input,
 			SW_FLIP, flip_cover);
-	input_report_switch(ddata->input,
-			SW_LID, !flip_cover);
 	input_sync(ddata->input);
 }
 #if defined(CONFIG_SENSORS_HALL_REAR)
@@ -147,7 +144,7 @@ static void flip_cover_rear_work(struct work_struct *work)
 		container_of(work, struct hall_drvdata,
 				flip_cover_rear_dwork.work);
 
-	first = !gpio_get_value(ddata->gpio_flip_cover_rear);
+	first = gpio_get_value(ddata->gpio_flip_cover_rear);
 
 	printk("keys:%s #1 : %d\n", __func__, first);
 
@@ -212,7 +209,7 @@ static irqreturn_t flip_cover_rear_detect(int irq, void *dev_id)
 	bool flip_status;
 	struct hall_drvdata *ddata = dev_id;
 
-	flip_status = !gpio_get_value(ddata->gpio_flip_cover_rear);
+	flip_status = gpio_get_value(ddata->gpio_flip_cover_rear);
 
 	printk(KERN_DEBUG "keys:%s flip_status : %d\n",
 		 __func__, flip_status);
@@ -251,7 +248,7 @@ static void init_hall_ic_irq(struct input_dev *input)
 
 	flip_cover = gpio_get_value(ddata->gpio_flip_cover);
 #if defined(CONFIG_SENSORS_HALL_REAR)
-	flip_cover_rear = !gpio_get_value(ddata->gpio_flip_cover_rear);
+	flip_cover_rear = gpio_get_value(ddata->gpio_flip_cover_rear);
 #endif
 
 	INIT_DELAYED_WORK(&ddata->flip_cover_dwork, flip_cover_work);
@@ -281,7 +278,7 @@ static void init_hall_ic_irq(struct input_dev *input)
 		flip_cover_rear_detect,
 		IRQF_DISABLED | IRQF_TRIGGER_RISING |
 		IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-		"flip_cover_rear", ddata);
+		"flip_cover", ddata);
 	if (ret < 0) {
 		printk(KERN_ERR
 		"keys: failed to request flip cover irq %d gpio %d\n",
@@ -370,12 +367,8 @@ static int hall_probe(struct platform_device *pdev)
 	input->dev.parent = &pdev->dev;
 
 	input->evbit[0] |= BIT_MASK(EV_SW);
-
 	input_set_capability(input, EV_SW, SW_FLIP);
-	input_set_capability(input, EV_SW, SW_LID);
-#if defined(CONFIG_SENSORS_HALL_REAR)
-	input_set_capability(input, EV_SW, SW_COVER_ATTACH);
-#endif
+
 	input->open = hall_open;
 	input->close = hall_close;
 
@@ -394,10 +387,10 @@ static int hall_probe(struct platform_device *pdev)
 
 #if defined(CONFIG_SENSORS_HALL_REAR)
 	if(ddata->gpio_flip_cover_rear != 0) {
-                error = device_create_file(sec_key, &dev_attr_certify_hall_detect);
+                error = device_create_file(sec_key, &dev_attr_hall_detect_rear);
                 if (error < 0) {
                         pr_err("Failed to create device file(%s)!, error: %d\n",
-                                dev_attr_certify_hall_detect.attr.name, error);
+                                dev_attr_hall_detect_rear.attr.name,error);
                 }
         }
 #endif

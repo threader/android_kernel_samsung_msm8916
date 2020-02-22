@@ -88,11 +88,11 @@ enum {
 	OFF = 0,
 	ON = 1,
 };
-#define Atime_ms		500  /*50.0 ms*/
-#define DGF				578
-#define R_Coef1			(340)
-#define G_Coef1			(1000)
-#define B_Coef1			(310)
+#define Atime_ms		504  /*50.4 ms*/
+#define DGF				625
+#define R_Coef1			(-580)
+#define G_Coef1			(1010)
+#define B_Coef1			(80)
 #define IR_R_Coef1			(-1)
 #define IR_G_Coef1			(109)
 #define IR_B_Coef1			(-29)
@@ -109,7 +109,7 @@ enum {
 #define TAOS_PROX_MIN			0
 
 #define OFFSET_ARRAY_LENGTH		10
-#define OFFSET_FILE_PATH	"/efs/FactoryApp/prox_cal"
+#define OFFSET_FILE_PATH	"/efs/prox_cal"
 
 #define CAL_SKIP_ADC	204
 #define CAL_FAIL_ADC	480
@@ -543,7 +543,9 @@ static int taos_get_lux(struct taos_data *taos)
 	}
 
 	/* calculate lux */
-	taos->irdata = (reddata + grndata + bludata - clrdata) / 2;
+	taos->irdata =
+		(reddata*IR_R_Coef1 + grndata*IR_G_Coef1 + bludata*IR_B_Coef1
+			- clrdata*IR_C_Coef1) / IR_Coef1;
 
 	/* remove ir from counts*/
 	rp1 = taos->reddata - taos->irdata;
@@ -1165,24 +1167,6 @@ static ssize_t prox_trim_show(struct device *dev,
 	return sprintf(buf, "%d\n", taos->pdata->prox_rawdata_trim);
 }
 
-static ssize_t prox_trim_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t size)
-{
-	struct taos_data *taos = dev_get_drvdata(dev);
-	int trim_value = (u8)(taos->pdata->prox_rawdata_trim);
-	int err = 0;
-
-	err = kstrtoint(buf, 10, &trim_value);
-	pr_info("%s, trim_value = %d\n", __func__, trim_value);
-	if (err < 0)
-		pr_err("%s, kstrtoint failed.", __func__);
-
-	taos->pdata->prox_rawdata_trim = trim_value;
-
-	return size;
-}
-
-
 static ssize_t get_vendor_name(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -1279,9 +1263,7 @@ static DEVICE_ATTR(thresh_high, 0644, thresh_high_show,
 	thresh_high_store);
 static DEVICE_ATTR(thresh_low, 0644, thresh_low_show,
 	thresh_low_store);
-static DEVICE_ATTR(prox_trim, S_IRUGO| S_IWUSR | S_IWGRP,
-	prox_trim_show, prox_trim_store);
-
+static DEVICE_ATTR(prox_trim, S_IRUGO, prox_trim_show, NULL);
 static struct device_attribute *prox_sensor_attrs[] = {
 	&dev_attr_state,
 	&dev_attr_prox_avg,
@@ -1615,6 +1597,7 @@ static int taos_i2c_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
 	int ret = -ENODEV,err;
+	int chipid = 0;
 	struct input_dev *input_dev;
 	struct taos_data *taos;
 	struct taos_platform_data *pdata = NULL;
@@ -1672,9 +1655,9 @@ static int taos_i2c_probe(struct i2c_client *client,
 	tmd3782_leden_gpio_onoff(taos, 1);
 
 	/* ID Check */
-	ret = i2c_smbus_read_byte_data(client, CMD_REG | CHIPID);
-	if (ret != CHIP_ID) {
-		pr_err("%s: i2c read error [%X]\n", __func__, ret);
+	chipid = i2c_smbus_read_byte_data(client, CMD_REG | CHIPID);
+	if (chipid != CHIP_ID) {
+		pr_err("%s: i2c read error [%X]\n", __func__, chipid);
 		goto err_chip_id_or_i2c_error;
 	}
 

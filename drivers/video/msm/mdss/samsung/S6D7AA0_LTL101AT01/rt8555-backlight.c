@@ -10,6 +10,7 @@
  */
 #include <linux/kernel.h>
 #include <asm/unaligned.h>
+#include <mach/board.h>
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
@@ -25,6 +26,7 @@
 #include <linux/gpio.h>
 #include <linux/miscdevice.h>
 #include <linux/regulator/consumer.h>
+#include <asm/mach-types.h>
 #include <linux/device.h>
 #include <linux/of_gpio.h>
 
