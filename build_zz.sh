@@ -30,7 +30,7 @@ KERNEL_IMG=$KERNEL_DIR/out/arch/arm/boot/zImage
 DT_IMAGE=$KERNEL_DIR/out/arch/arm/boot/dt.img
 UPLOAD_DIR=$KERNEL_DIR/OUTPUT/$DEVICE
 DTBTOOL=$KERNEL_DIR/tools/dtbToolCM
-TOOLCHAIN=$KERNEL_DIR/../arm-eabi-7.2
+TOOLCHAIN=/home/BinayDEV/kernel/arm-eabi-7.2
 
 # Export
 export ARCH=arm
@@ -57,13 +57,13 @@ function make_kernel() {
   if ! [ -a $KERNEL_IMG ];
   then
     echo -e "$red Kernel Compilation failed! Fix the errors! $nocol"
-    exit 1
   fi
 }
 
 # Make DT.IMG
 function make_dt(){
-$DTBTOOL -2 -o $DT_IMAGE -s 2048 -p $KERNEL_DIR/scripts/dtc/ $KERNEL_DIR/out/arch/arm/boot/dts/
+chmod 777 $DTBTOOL
+$DTBTOOL -2 -o $DT_IMAGE -s 2048 -p $KERNEL_DIR/scripts/dtc/ $KERNEL_DIR/arch/arm/boot/dts/
 }
 
 # Making zip
@@ -76,7 +76,6 @@ cp $DT_IMAGE $ANYKERNEL_DIR
 mkdir -p $UPLOAD_DIR
 cd $ANYKERNEL_DIR
 zip -r9 UPDATE-AnyKernel2.zip * -x README UPDATE-AnyKernel2.zip
-mv $ANYKERNEL_DIR/UPDATE-AnyKernel2.zip $UPLOAD_DIR/$FINAL_ZIP
 mv $ANYKERNEL_DIR/UPDATE-AnyKernel2.zip $UPLOAD_DIR/$FINAL_ZIP
 rm -rf $KERNEL_DIR/tmp_mod
 cd $UPLOAD_DIR
